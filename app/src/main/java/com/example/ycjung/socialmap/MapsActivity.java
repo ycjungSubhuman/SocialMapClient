@@ -100,6 +100,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 } catch (JSONException e) {
                     Log.e("JSONERROR", "JSON PUT EXCEPTION");
                 }
+                //init array_list_point_liset
+                list_point_list = new ArrayList<List<LatLng>>();
 
                 //debug message
                 for (List<LatLng> li : list_point_list) {
