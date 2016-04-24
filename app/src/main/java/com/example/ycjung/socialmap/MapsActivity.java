@@ -1,18 +1,88 @@
 package com.example.ycjung.socialmap;
 
+import android.app.Fragment;
+import android.content.Context;
+import android.graphics.Color;
+import android.graphics.Point;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AppCompatActivity;
+import android.util.AttributeSet;
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.View;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polyline;
+import com.google.android.gms.maps.model.PolylineOptions;
 
-public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
+import java.util.ArrayList;
+import java.util.List;
+
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
 
     private GoogleMap mMap;
+    public static boolean mMapIsTouched = false;
+    private static boolean isInDrawMode = false;
+    DrawSupportMapFragment drawSupportMapFragment;
+    Projection projection;
+    PolylineOptions polylineOptions;
+    List<List<LatLng>> list_point_list = new ArrayList<List<LatLng>>();
+    Polyline polyline;
+    boolean pendingline = false;
+    public double latitude;
+    public double longitude;
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.main, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+
+        if(id==R.id.action_draw) {
+            //TODO : call draw mode toggle
+            //change button type (on to off)
+            mMap.getUiSettings().setScrollGesturesEnabled(false);
+            isInDrawMode = true;
+            pendingline = true;
+            polylineOptions = new PolylineOptions();
+            return true;
+        }
+        if(id==R.id.action_navi) {
+            mMap.getUiSettings().setScrollGesturesEnabled(true);
+            isInDrawMode = false;
+
+            //TODO: send the data to server
+            if(list_point_list.isEmpty()) {
+                List<LatLng> curr_map_polyline = polyline.getPoints();
+                String for_debug = "[";
+                for (LatLng lat : curr_map_polyline) {
+                    for_debug += lat.toString();
+                    for_debug += ",";
+                }
+                for_debug += "]";
+                Log.i("ON_DRAWFIN", for_debug);
+            }
+
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -22,8 +92,55 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-    }
 
+        DrawSupportMapFragment drawSupportMapFragment = ((DrawSupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map));
+        mMap = drawSupportMapFragment.getMap();
+
+        drawSupportMapFragment.setOnDragListener(new MapWrapperLayout.OnDragListener() {@Override
+            public void onDrag(MotionEvent motionEvent) {
+                Log.i("ON_DRAG", "X:" + String.valueOf(motionEvent.getX()));
+                Log.i("ON_DRAG", "Y:" + String.valueOf(motionEvent.getY()));
+
+                mMapIsTouched = true;
+
+                float x = motionEvent.getX();
+                float y = motionEvent.getY();
+
+                int x_co = Integer.parseInt(String.valueOf(Math.round(x)));
+                int y_co = Integer.parseInt(String.valueOf(Math.round(y)));
+
+                projection = mMap.getProjection();
+                Point x_y_points = new Point(x_co, y_co);
+                LatLng latLng = mMap.getProjection().fromScreenLocation(x_y_points);
+                latitude = latLng.latitude;
+                longitude = latLng.longitude;
+
+                Log.i("ON_DRAG", "lat:" + latitude);
+                Log.i("ON_DRAG", "long:" + longitude);
+
+                // Handle motion event:
+                if(isInDrawMode) {
+                    if(pendingline){
+                        polylineOptions = new PolylineOptions();
+                        polyline = mMap.addPolyline(polylineOptions.add(latLng).width(5).color(Color.BLACK));
+                        pendingline = false;
+                    }
+                    else {
+                        polyline = mMap.addPolyline(polylineOptions.add(latLng).width(5).color(Color.BLACK));
+                    }
+                }
+            }
+        });
+        drawSupportMapFragment.setOnTouchUpListener(new MapWrapperLayout.OnTouchUpListener() {
+            @Override
+            public void onTouchUp(MotionEvent motionEvent) {
+                mMapIsTouched = false;
+                pendingline = true;
+                Log.i("ON_TOUCHUP", "TOUCHFINISHED");
+
+            }
+        });
+    }
 
     /**
      * Manipulates the map once available.

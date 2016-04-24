@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context=".MapsActivity"
+    >
+    <item android:id="@+id/action_draw"
+        android:icon="@mipmap/icon_draw"
+        android:title="@string/action_draw"
+        android:orderInCategory="100"
+        app:showAsAction="always"
+        />
+    <item android:id="@+id/action_navi"
+        android:icon="@mipmap/icon_navi"
+        android:title="Map Navigation Mode"
+        android:orderInCategory="4"
+        app:showAsAction="always"
+        />
+</menu>
