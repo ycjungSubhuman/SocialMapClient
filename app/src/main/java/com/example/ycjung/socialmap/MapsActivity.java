@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
+import android.util.JsonWriter;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -26,6 +27,10 @@ import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,7 +41,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static boolean isInDrawMode = false;
     DrawSupportMapFragment drawSupportMapFragment;
     Projection projection;
-    PolylineOptions polylineOptions;
+    PolylineOptions polylineOptions = new PolylineOptions();
     List<List<LatLng>> list_point_list = new ArrayList<List<LatLng>>();
     Polyline polyline;
     boolean pendingline = false;
@@ -67,15 +72,46 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             isInDrawMode = false;
 
             //TODO: send the data to server
-            if(list_point_list.isEmpty()) {
-                List<LatLng> curr_map_polyline = polyline.getPoints();
-                String for_debug = "[";
-                for (LatLng lat : curr_map_polyline) {
-                    for_debug += lat.toString();
-                    for_debug += ",";
+            String for_debug = "";
+            if(!list_point_list.isEmpty()) {
+                JSONObject json = new JSONObject();
+                JSONArray array_vertice = new JSONArray();
+                JSONArray array_array_vertice = new JSONArray();
+                //make JSON
+                for(List<LatLng> li : list_point_list) {
+                    for(int i=0; i<li.size(); i++) {
+                        try {
+                            JSONObject pair = new JSONObject()
+                                    .put("lat", li.get(i).latitude)
+                                    .put("lng", li.get(i).longitude);
+                            array_vertice.put(i, pair);
+                        } catch (JSONException e) {
+                            Log.e("JSONERROR", "JSON PUT EXCEPTION");
+                            break;
+                        }
+                    }
+                    array_array_vertice = array_array_vertice.put(array_vertice);
                 }
-                for_debug += "]";
+
+                try {
+                    json = json.put("operation", "SAVEPAINTING")
+                            .put("sender", "ycjung")
+                            .put("body", array_array_vertice);
+                } catch (JSONException e) {
+                    Log.e("JSONERROR", "JSON PUT EXCEPTION");
+                }
+
+                //debug message
+                for (List<LatLng> li : list_point_list) {
+                    for_debug += "NEWLINE : [";
+                    for (LatLng lat : li) {
+                        for_debug += lat.toString();
+                        for_debug += ",";
+                    }
+                    for_debug += "]\n";
+                }
                 Log.i("ON_DRAWFIN", for_debug);
+                Log.i("JSONRESULT", json.toString());
             }
 
             return true;
@@ -92,54 +128,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
         mapFragment.getMapAsync(this);
-
-        DrawSupportMapFragment drawSupportMapFragment = ((DrawSupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map));
-        mMap = drawSupportMapFragment.getMap();
-
-        drawSupportMapFragment.setOnDragListener(new MapWrapperLayout.OnDragListener() {@Override
-            public void onDrag(MotionEvent motionEvent) {
-                Log.i("ON_DRAG", "X:" + String.valueOf(motionEvent.getX()));
-                Log.i("ON_DRAG", "Y:" + String.valueOf(motionEvent.getY()));
-
-                mMapIsTouched = true;
-
-                float x = motionEvent.getX();
-                float y = motionEvent.getY();
-
-                int x_co = Integer.parseInt(String.valueOf(Math.round(x)));
-                int y_co = Integer.parseInt(String.valueOf(Math.round(y)));
-
-                projection = mMap.getProjection();
-                Point x_y_points = new Point(x_co, y_co);
-                LatLng latLng = mMap.getProjection().fromScreenLocation(x_y_points);
-                latitude = latLng.latitude;
-                longitude = latLng.longitude;
-
-                Log.i("ON_DRAG", "lat:" + latitude);
-                Log.i("ON_DRAG", "long:" + longitude);
-
-                // Handle motion event:
-                if(isInDrawMode) {
-                    if(pendingline){
-                        polylineOptions = new PolylineOptions();
-                        polyline = mMap.addPolyline(polylineOptions.add(latLng).width(5).color(Color.BLACK));
-                        pendingline = false;
-                    }
-                    else {
-                        polyline = mMap.addPolyline(polylineOptions.add(latLng).width(5).color(Color.BLACK));
-                    }
-                }
-            }
-        });
-        drawSupportMapFragment.setOnTouchUpListener(new MapWrapperLayout.OnTouchUpListener() {
-            @Override
-            public void onTouchUp(MotionEvent motionEvent) {
-                mMapIsTouched = false;
-                pendingline = true;
-                Log.i("ON_TOUCHUP", "TOUCHFINISHED");
-
-            }
-        });
     }
 
     /**
@@ -159,5 +147,55 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         LatLng sydney = new LatLng(-34, 151);
         mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
         mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
+
+        DrawSupportMapFragment drawSupportMapFragment = ((DrawSupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map));
+        mMap = drawSupportMapFragment.getMap();
+
+        drawSupportMapFragment.setOnDragListener(new MapWrapperLayout.OnDragListener() {@Override
+        public void onDrag(MotionEvent motionEvent) {
+            Log.i("ON_DRAG", "X:" + String.valueOf(motionEvent.getX()));
+            Log.i("ON_DRAG", "Y:" + String.valueOf(motionEvent.getY()));
+
+            mMapIsTouched = true;
+
+            float x = motionEvent.getX();
+            float y = motionEvent.getY();
+
+            int x_co = Integer.parseInt(String.valueOf(Math.round(x)));
+            int y_co = Integer.parseInt(String.valueOf(Math.round(y)));
+
+            projection = mMap.getProjection();
+            Point x_y_points = new Point(x_co, y_co);
+            LatLng latLng = mMap.getProjection().fromScreenLocation(x_y_points);
+            latitude = latLng.latitude;
+            longitude = latLng.longitude;
+
+            Log.i("ON_DRAG", "lat:" + latitude);
+            Log.i("ON_DRAG", "long:" + longitude);
+
+            // Handle motion event:
+            if(isInDrawMode) {
+                if(pendingline){
+                    polyline = mMap.addPolyline(polylineOptions.add(latLng).width(5).color(Color.BLACK));
+                    pendingline = false;
+                }
+                else {
+                    polyline = mMap.addPolyline(polylineOptions.add(latLng).width(5).color(Color.BLACK));
+                }
+            }
+        }
+        });
+        drawSupportMapFragment.setOnTouchUpListener(new MapWrapperLayout.OnTouchUpListener() {
+            @Override
+            public void onTouchUp(MotionEvent motionEvent) {
+                mMapIsTouched = false;
+                pendingline = true;
+                if(isInDrawMode) {
+                    list_point_list.add(polylineOptions.getPoints());
+                    polylineOptions = new PolylineOptions();
+                    Log.i("ON_TOUCHUP", "TOUCHFINISHED");
+                }
+            }
+        });
     }
 }
