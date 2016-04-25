@@ -1,12 +1,16 @@
 package com.example.ycjung.socialmap;
 
 import android.app.Fragment;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.graphics.Point;
+import android.os.AsyncTask;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
 import android.util.JsonWriter;
@@ -31,6 +35,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,6 +57,68 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean pendingline = false;
     public double latitude;
     public double longitude;
+
+    private class JsonToServerJob extends AsyncTask<String,Void,String> {
+        ProgressDialog progressDialog;
+        AlertDialog alertDialog;
+        @Override
+        protected void onProgressUpdate(Void... values) {
+            super.onProgressUpdate(values);
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+            progressDialog.dismiss();
+            if (s!=null) {
+                //TODO: get code and if the code is not OK, popup error message
+            }
+            else {
+                AlertDialog.Builder builder_alertDialog;
+                builder_alertDialog = new AlertDialog.Builder(MapsActivity.this);
+                builder_alertDialog.setTitle("Communication Error")
+                        .setMessage("Connection couldn't be established.")
+                        .setNeutralButton("OK", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                            }
+                        });
+                alertDialog = builder_alertDialog.create();
+                alertDialog.show();
+            }
+        }
+
+        @Override
+        protected void onPreExecute() {
+            super.onPreExecute();
+            progressDialog = ProgressDialog.show(MapsActivity.this, "Saving...", "Saving...");
+        }
+
+        @Override
+        protected String doInBackground(String... jsons) {
+            //send json request to server. get response from server.
+            try {
+                Socket socket = new Socket(getString(R.string.address_server), 25565);
+                OutputStream outputStream = socket.getOutputStream();
+                DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+
+                dataOutputStream.writeChars(jsons[0]);
+
+                dataOutputStream.close();
+
+                InputStream inputStream = socket.getInputStream();
+                DataInputStream dataInputStream = new DataInputStream(inputStream);
+
+                String response = dataInputStream.readUTF();
+
+                socket.close();
+            } catch (IOException e) {
+                return null;
+            }
+            return null;
+        }
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -114,6 +186,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 }
                 Log.i("ON_DRAWFIN", for_debug);
                 Log.i("JSONRESULT", json.toString());
+
+                //send to server
+                new JsonToServerJob().execute(json.toString());
             }
 
             return true;
