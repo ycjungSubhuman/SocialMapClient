@@ -98,25 +98,42 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         protected String doInBackground(String... jsons) {
             //send json request to server. get response from server.
+            String response = "fine";
             try {
-                Socket socket = new Socket(getString(R.string.address_server), 25565);
+                Socket socket = new Socket(getString(R.string.address_server), 4000);
                 OutputStream outputStream = socket.getOutputStream();
-                DataOutputStream dataOutputStream = new DataOutputStream(outputStream);
+                //InputStream inputStream = socket.getInputStream();
 
-                dataOutputStream.writeChars(jsons[0]);
+                int size = jsons[0].getBytes().length;
+                int sent = 0;
+                final int block = 512;
+                while(sent < size) {
+                    if (sent+block<size) {
+                        outputStream.write(jsons[0].getBytes(), sent, block);
+                    }
+                    else {
+                        byte[] tmp = new byte[size+1];
+                        byte[] fin = {0,};
+                        System.arraycopy(jsons[0].getBytes(), 0, tmp, 0, size);
+                        System.arraycopy(fin, 0, tmp, size, 1);
 
-                dataOutputStream.close();
+                        outputStream.write(tmp, sent, size-sent+1);
+                    }
+                    sent += block;
+                }
+                outputStream.flush();
+                outputStream.close();
 
-                InputStream inputStream = socket.getInputStream();
-                DataInputStream dataInputStream = new DataInputStream(inputStream);
-
-                String response = dataInputStream.readUTF();
+                //byte[] buffer = new byte[3000];
+                //inputStream.read(buffer, 0, 3000);
+                //response = new String(buffer);
+                //Log.i("RESPONSE", response);
 
                 socket.close();
             } catch (IOException e) {
                 return null;
             }
-            return null;
+            return response;
         }
     }
 
