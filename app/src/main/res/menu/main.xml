@@ -16,4 +16,10 @@
         android:orderInCategory="4"
         app:showAsAction="always"
         />
+    <item android:id="@+id/action_pin"
+        android:icon="@mipmap/ic_launcher"
+        android:title="Add Pin to Map"
+        android:orderInCategory="3"
+        app:showAsAction="always"
+        />
 </menu>

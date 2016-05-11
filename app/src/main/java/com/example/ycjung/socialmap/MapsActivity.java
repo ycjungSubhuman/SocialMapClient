@@ -15,10 +15,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
 import android.util.JsonWriter;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -41,6 +43,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,6 +54,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static boolean isInDrawMode = false;
     DrawSupportMapFragment drawSupportMapFragment;
     Projection projection;
+    Toast toast_pin;
+    Toast toast_accept;
     PolylineOptions polylineOptions = new PolylineOptions();
     List<List<LatLng>> list_point_list = new ArrayList<List<LatLng>>();
     Polyline polyline;
@@ -71,7 +76,25 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             super.onPostExecute(s);
             progressDialog.dismiss();
             if (s!=null) {
-                //TODO: get code and if the code is not OK, popup error message
+                CharSequence text = "";
+                Context context = getApplicationContext();
+                int duration = Toast.LENGTH_SHORT;
+
+                try{
+                    JSONObject response = new JSONObject(s);
+                    if (response.getString("status").equals("OK")) {
+                        text = "data sent to server";
+                    }
+                    else {
+                        text = "server error";
+                    }
+
+                } catch (JSONException e) {
+                    text = "server message not correct";
+                }
+
+                toast_accept = Toast.makeText(context, text, duration);
+                toast_accept.show();
             }
             else {
                 AlertDialog.Builder builder_alertDialog;
@@ -98,36 +121,42 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         @Override
         protected String doInBackground(String... jsons) {
             //send json request to server. get response from server.
-            String response = "fine";
+            String response = "";
             try {
-                Socket socket = new Socket(getString(R.string.address_server), 4000);
+                Socket socket = new Socket(getString(R.string.address_server), 8000);
                 OutputStream outputStream = socket.getOutputStream();
-                //InputStream inputStream = socket.getInputStream();
+                InputStream inputStream = socket.getInputStream();
 
-                int size = jsons[0].getBytes().length;
+                int size = jsons[0].getBytes(StandardCharsets.US_ASCII).length;
                 int sent = 0;
                 final int block = 512;
                 while(sent < size) {
                     if (sent+block<size) {
-                        outputStream.write(jsons[0].getBytes(), sent, block);
+                        outputStream.write(jsons[0].getBytes(StandardCharsets.US_ASCII), sent, block);
                     }
                     else {
-                        byte[] tmp = new byte[size+1];
-                        byte[] fin = {0,};
-                        System.arraycopy(jsons[0].getBytes(), 0, tmp, 0, size);
-                        System.arraycopy(fin, 0, tmp, size, 1);
+                        byte[] tmp = new byte[size+5];
+                        byte[] fin = "\r\n\r\n\0".getBytes(StandardCharsets.US_ASCII);
+                        System.arraycopy(jsons[0].getBytes(StandardCharsets.US_ASCII), 0, tmp, 0, size);
+                        System.arraycopy(fin, 0, tmp, size, fin.length);
 
-                        outputStream.write(tmp, sent, size-sent+1);
+                        outputStream.write(tmp, sent, size-sent+fin.length);
                     }
                     sent += block;
                 }
                 outputStream.flush();
-                outputStream.close();
 
-                //byte[] buffer = new byte[3000];
-                //inputStream.read(buffer, 0, 3000);
-                //response = new String(buffer);
-                //Log.i("RESPONSE", response);
+                byte[] buff = new byte[513];
+                while(inputStream.read(buff, 0, 512) != -1) {
+                    buff[buff.length-1] = 0;
+                    int i;
+                    for (i=0; i<buff.length && buff[i] != 0; i++) {}
+                    response += new String(buff, 0, i);
+                }
+
+                Log.i("RESPONSE", response);
+
+                outputStream.close();
 
                 socket.close();
             } catch (IOException e) {
@@ -148,7 +177,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         int id = item.getItemId();
 
         if(id==R.id.action_draw) {
-            //TODO : call draw mode toggle
             //change button type (on to off)
             mMap.getUiSettings().setScrollGesturesEnabled(false);
             isInDrawMode = true;
@@ -156,11 +184,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             polylineOptions = new PolylineOptions();
             return true;
         }
+        if(id==R.id.action_pin) {
+            //choose where to pin
+            Context context = this.getApplicationContext();
+            CharSequence text = "Pick a point to pin";
+            int duration = Toast.LENGTH_LONG;
+            toast_pin = Toast.makeText(context, text, duration);
+            toast_pin.setGravity(Gravity.TOP| Gravity.LEFT, 0, 20);
+            toast_pin.show();
+        }
         if(id==R.id.action_navi) {
             mMap.getUiSettings().setScrollGesturesEnabled(true);
             isInDrawMode = false;
 
-            //TODO: send the data to server
             String for_debug = "";
             if(!list_point_list.isEmpty()) {
                 JSONObject json = new JSONObject();
