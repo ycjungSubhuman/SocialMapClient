@@ -14,6 +14,7 @@ import android.support.v7.app.ActionBarActivity;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.AttributeSet;
+import android.util.Base64;
 import android.util.JsonWriter;
 import android.util.Log;
 import android.view.Gravity;
@@ -21,6 +22,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -30,6 +32,7 @@ import com.google.android.gms.maps.Projection;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.UiSettings;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -63,6 +66,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public double latitude;
     public double longitude;
     String mUsername;
+    Marker marker;
+
+
 
     private class JsonToServerJob extends AsyncTask<String,Void,String> {
         ProgressDialog progressDialog;
@@ -112,6 +118,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 alertDialog.show();
             }
         }
+
 
         @Override
         protected void onPreExecute() {
@@ -167,6 +174,78 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
     }
 
+    private void saveDrawing() {
+        String for_debug = "";
+        if (!list_point_list.isEmpty()) {
+            JSONObject json = new JSONObject();
+            JSONArray array_vertice = new JSONArray();
+            JSONArray array_array_vertice = new JSONArray();
+            //make JSON
+            for (List<LatLng> li : list_point_list) {
+                for (int i = 0; i < li.size(); i++) {
+                    try {
+                        JSONObject pair = new JSONObject()
+                                .put("lat", li.get(i).latitude)
+                                .put("lng", li.get(i).longitude);
+                        array_vertice.put(i, pair);
+                    } catch (JSONException e) {
+                        Log.e("JSONERROR", "JSON PUT EXCEPTION");
+                        break;
+                    }
+                }
+                array_array_vertice = array_array_vertice.put(array_vertice);
+            }
+
+            try {
+                json = json.put("operation", "SAVEPAINTING")
+                        .put("sender", mUsername)
+                        .put("body", array_array_vertice);
+            } catch (JSONException e) {
+                Log.e("JSONERROR", "JSON PUT EXCEPTION");
+            }
+            //init array_list_point_liset
+            list_point_list = new ArrayList<List<LatLng>>();
+
+            //debug message
+            for (List<LatLng> li : list_point_list) {
+                for_debug += "NEWLINE : [";
+                for (LatLng lat : li) {
+                    for_debug += lat.toString();
+                    for_debug += ",";
+                }
+                for_debug += "]\n";
+            }
+            Log.i("ON_DRAWFIN", for_debug);
+            Log.i("JSONRESULT", json.toString());
+
+            //send to server
+            isInDrawMode = false;
+            new JsonToServerJob().execute(json.toString());
+        }
+    }
+    private void saveMarker() {
+        String title = Base64.encodeToString(marker.getTitle().getBytes(), 0);
+        double lat = marker.getPosition().latitude;
+        double lng = marker.getPosition().longitude;
+
+        //build json
+        JSONObject body, json;
+        try {
+            body = new JSONObject()
+                    .put("lat", lat)
+                    .put("lng", lng)
+                    .put("text", title);
+            json = new JSONObject()
+                    .put("operation", "SAVEMARKER")
+                    .put("sender", mUsername)
+                    .put("body", body);
+        } catch (JSONException e ) {
+            Log.e("MARKER_SAVE", "json building failed");
+            return;
+        }
+        new JsonToServerJob().execute(json.toString());
+    }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
@@ -186,6 +265,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             return true;
         }
         if(id==R.id.action_pin) {
+            if(isInDrawMode) saveDrawing();
             //choose where to pin
             Context context = this.getApplicationContext();
             CharSequence text = "Pick a point to pin";
@@ -193,58 +273,14 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             toast_pin = Toast.makeText(context, text, duration);
             toast_pin.setGravity(Gravity.TOP| Gravity.LEFT, 0, 20);
             toast_pin.show();
+
+            //marker mode on
+            isInMarkMode = true;
+            mMap.getUiSettings().setScrollGesturesEnabled(false);
         }
         if(id==R.id.action_navi) {
             mMap.getUiSettings().setScrollGesturesEnabled(true);
-            isInDrawMode = false;
-
-            String for_debug = "";
-            if(!list_point_list.isEmpty()) {
-                JSONObject json = new JSONObject();
-                JSONArray array_vertice = new JSONArray();
-                JSONArray array_array_vertice = new JSONArray();
-                //make JSON
-                for(List<LatLng> li : list_point_list) {
-                    for(int i=0; i<li.size(); i++) {
-                        try {
-                            JSONObject pair = new JSONObject()
-                                    .put("lat", li.get(i).latitude)
-                                    .put("lng", li.get(i).longitude);
-                            array_vertice.put(i, pair);
-                        } catch (JSONException e) {
-                            Log.e("JSONERROR", "JSON PUT EXCEPTION");
-                            break;
-                        }
-                    }
-                    array_array_vertice = array_array_vertice.put(array_vertice);
-                }
-
-                try {
-                    json = json.put("operation", "SAVEPAINTING")
-                            .put("sender", mUsername)
-                            .put("body", array_array_vertice);
-                } catch (JSONException e) {
-                    Log.e("JSONERROR", "JSON PUT EXCEPTION");
-                }
-                //init array_list_point_liset
-                list_point_list = new ArrayList<List<LatLng>>();
-
-                //debug message
-                for (List<LatLng> li : list_point_list) {
-                    for_debug += "NEWLINE : [";
-                    for (LatLng lat : li) {
-                        for_debug += lat.toString();
-                        for_debug += ",";
-                    }
-                    for_debug += "]\n";
-                }
-                Log.i("ON_DRAWFIN", for_debug);
-                Log.i("JSONRESULT", json.toString());
-
-                //send to server
-                new JsonToServerJob().execute(json.toString());
-            }
-
+            if(isInDrawMode) saveDrawing();
             return true;
         }
 
@@ -286,9 +322,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         drawSupportMapFragment.setOnDragListener(new MapWrapperLayout.OnDragListener() {@Override
         public void onDrag(MotionEvent motionEvent) {
-            Log.i("ON_DRAG", "X:" + String.valueOf(motionEvent.getX()));
-            Log.i("ON_DRAG", "Y:" + String.valueOf(motionEvent.getY()));
-
             mMapIsTouched = true;
 
             float x = motionEvent.getX();
@@ -300,11 +333,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             projection = mMap.getProjection();
             Point x_y_points = new Point(x_co, y_co);
             LatLng latLng = mMap.getProjection().fromScreenLocation(x_y_points);
-            latitude = latLng.latitude;
-            longitude = latLng.longitude;
-
-            Log.i("ON_DRAG", "lat:" + latitude);
-            Log.i("ON_DRAG", "long:" + longitude);
 
             // Handle motion event:
             if(isInDrawMode) {
@@ -327,6 +355,41 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                     list_point_list.add(polylineOptions.getPoints());
                     polylineOptions = new PolylineOptions();
                     Log.i("ON_TOUCHUP", "TOUCHFINISHED");
+                }
+                else if (isInMarkMode) {
+                    float x = motionEvent.getX();
+                    float y = motionEvent.getY();
+
+                    int x_co = Integer.parseInt(String.valueOf(Math.round(x)));
+                    int y_co = Integer.parseInt(String.valueOf(Math.round(y)));
+
+                    projection = mMap.getProjection();
+                    Point x_y_points = new Point(x_co, y_co);
+                    LatLng latLng = mMap.getProjection().fromScreenLocation(x_y_points);
+
+                    marker = mMap.addMarker(new MarkerOptions()
+                        .position(latLng)
+                    );
+                    AlertDialog.Builder alert = new AlertDialog.Builder(MapsActivity.this);
+                    final EditText input = new EditText(MapsActivity.this);
+                    alert.setView(input);
+                    alert.setPositiveButton("OK", new DialogInterface.OnClickListener(){
+                        public void onClick(DialogInterface dialog, int whichButton) {
+                            String title = input.getText().toString();
+                            marker.setTitle(title);
+                            saveMarker();
+                        }
+                    });
+                    alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int whichButton) {
+                            marker.remove();
+                            isInMarkMode = false;
+                            mMap.getUiSettings().setScrollGesturesEnabled(true);
+                        }
+                    });
+                    alert.show();
+
+                    isInMarkMode = false;
                 }
             }
         });

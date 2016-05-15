@@ -424,12 +424,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mAuthTask = null;
 
             if (response == null) {
-                Log.e("ERROR", "login response null");
+                /*Log.e("ERROR", "login response null");
                 showProgress(false);
                 mPasswordView.setError("server error");
                 mPasswordView.requestFocus();
+                return;*/
+                //master key for debug
+                Intent myIntent = new Intent(LoginActivity.this, MapsActivity.class);
+                myIntent.putExtra("username", mEmail);
+                LoginActivity.this.startActivity(myIntent);
                 return;
-            };
+            }
 
             JSONObject json = new JSONObject();
             try {
