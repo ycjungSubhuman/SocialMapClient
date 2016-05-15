@@ -20,6 +20,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -29,6 +30,19 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import com.google.android.gms.appindexing.Action;
+import com.google.android.gms.appindexing.AppIndex;
+import com.google.android.gms.common.api.GoogleApiClient;
+
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,13 +59,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private static final int REQUEST_READ_CONTACTS = 0;
 
     /**
-     * A dummy authentication store containing known user names and passwords.
-     * TODO: remove after connecting to a real authentication system.
-     */
-    private static final String[] DUMMY_CREDENTIALS = new String[]{
-            "foo@example.com:hello", "bar@example.com:world"
-    };
-    /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
     private UserLoginTask mAuthTask = null;
@@ -61,6 +68,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private EditText mPasswordView;
     private View mProgressView;
     private View mLoginFormView;
+    /**
+     * ATTENTION: This was auto-generated to implement the App Indexing API.
+     * See https://g.co/AppIndexing/AndroidStudio for more information.
+     */
+    private GoogleApiClient client;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +104,9 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client = new GoogleApiClient.Builder(this).addApi(AppIndex.API).build();
     }
 
     private void populateAutoComplete() {
@@ -111,7 +126,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
         if (shouldShowRequestPermissionRationale(READ_CONTACTS)) {
             Snackbar.make(mEmailView, R.string.permission_rationale, Snackbar.LENGTH_INDEFINITE)
-                    .setAction(android.R.string.ok, new View.OnClickListener() {
+                    .setAction(android.R.string.ok, new OnClickListener() {
                         @Override
                         @TargetApi(Build.VERSION_CODES.M)
                         public void onClick(View v) {
@@ -189,6 +204,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mAuthTask.execute((Void) null);
         }
     }
+
     private boolean isEmailValid(String email) {
         return email.contains("@");
     }
@@ -243,7 +259,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                 // Select only email addresses.
                 ContactsContract.Contacts.Data.MIMETYPE +
                         " = ?", new String[]{ContactsContract.CommonDataKinds.Email
-                                                                     .CONTENT_ITEM_TYPE},
+                .CONTENT_ITEM_TYPE},
 
                 // Show primary email addresses first. Note that there won't be
                 // a primary email address if the user hasn't specified one.
@@ -265,6 +281,46 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     @Override
     public void onLoaderReset(Loader<Cursor> cursorLoader) {
 
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        client.connect();
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Login Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app URL is correct.
+                Uri.parse("android-app://com.example.ycjung.socialmap/http/host/path")
+        );
+        AppIndex.AppIndexApi.start(client, viewAction);
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+
+        // ATTENTION: This was auto-generated to implement the App Indexing API.
+        // See https://g.co/AppIndexing/AndroidStudio for more information.
+        Action viewAction = Action.newAction(
+                Action.TYPE_VIEW, // TODO: choose an action type.
+                "Login Page", // TODO: Define a title for the content shown.
+                // TODO: If you have web page content that matches this app activity's content,
+                // make sure this auto-generated web page URL is correct.
+                // Otherwise, set the URL to null.
+                Uri.parse("http://host/path"),
+                // TODO: Make sure this auto-generated app URL is correct.
+                Uri.parse("android-app://com.example.ycjung.socialmap/http/host/path")
+        );
+        AppIndex.AppIndexApi.end(client, viewAction);
+        client.disconnect();
     }
 
     private interface ProfileQuery {
@@ -291,7 +347,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
      */
-    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+    public class UserLoginTask extends AsyncTask<Void, Void, String> {
 
         private final String mEmail;
         private final String mPassword;
@@ -302,40 +358,100 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
 
         @Override
-        protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
-
+        protected String doInBackground(Void... params) {
+            //make request
+            JSONObject body = new JSONObject();
+            JSONObject json = new JSONObject();
             try {
-                // Simulate network access.
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                return false;
+                body = new JSONObject()
+                        .put("password", mPassword);
+                json = new JSONObject()
+                        .put("operation", "LOGIN")
+                        .put("sender", mEmail)
+                        .put("body", body);
+            } catch (JSONException e) {
+                Log.e("JSONERROR", "login request building failed");
+                return null;
             }
+            String str_json = json.toString();
+            //send json request to server. get response from server.
+            String response = "";
+            try {
+                Socket socket = new Socket(getString(R.string.address_server), 4000);
+                OutputStream outputStream = socket.getOutputStream();
+                InputStream inputStream = socket.getInputStream();
 
-            for (String credential : DUMMY_CREDENTIALS) {
-                String[] pieces = credential.split(":");
-                if (pieces[0].equals(mEmail)) {
-                    // Account exists, return true if the password matches.
-                    return pieces[1].equals(mPassword);
+                int size = str_json.getBytes(StandardCharsets.US_ASCII).length;
+                int sent = 0;
+                final int block = 512;
+                while(sent < size) {
+                    if (sent+block<size) {
+                        outputStream.write(str_json.getBytes(StandardCharsets.US_ASCII), sent, block);
+                    }
+                    else {
+                        byte[] tmp = new byte[size+5];
+                        byte[] fin = "\r\n\r\n\0".getBytes(StandardCharsets.US_ASCII);
+                        System.arraycopy(str_json.getBytes(StandardCharsets.US_ASCII), 0, tmp, 0, size);
+                        System.arraycopy(fin, 0, tmp, size, fin.length);
+
+                        outputStream.write(tmp, sent, size-sent+fin.length);
+                    }
+                    sent += block;
                 }
-            }
+                outputStream.flush();
 
-            // TODO: register the new account here.
-            return true;
+                byte[] buff = new byte[513];
+                while(inputStream.read(buff, 0, 512) != -1) {
+                    buff[buff.length-1] = 0;
+                    int i;
+                    for (i=0; i<buff.length && buff[i] != 0; i++) {}
+                    response += new String(buff, 0, i);
+                }
+
+                Log.i("RESPONSE", response);
+
+                outputStream.close();
+
+                socket.close();
+            } catch (IOException e) {
+                return null;
+            }
+            return response;
         }
 
         @Override
-        protected void onPostExecute(final Boolean success) {
+        protected void onPostExecute(final String response) {
             mAuthTask = null;
             showProgress(false);
 
-            if (success) {
-                Intent myIntent = new Intent(LoginActivity.this, MapsActivity.class);
-                myIntent.putExtra("username", mEmail);
-                LoginActivity.this.startActivity(myIntent);
-            } else {
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
-                mPasswordView.requestFocus();
+            if (response == null) {
+                    //TODO: remove this master key
+                    Intent myIntent = new Intent(LoginActivity.this, MapsActivity.class);
+                    myIntent.putExtra("username", mEmail);
+                    LoginActivity.this.startActivity(myIntent);
+                    return;
+            };
+
+            JSONObject json = new JSONObject();
+            try {
+                json = new JSONObject(response);
+            } catch (JSONException e) {
+                Log.e("JSONERROR", "login server response corrupted");
+                return;
+            }
+
+            try {
+                if (json.getString("status").equals("OK")) {
+                    Intent myIntent = new Intent(LoginActivity.this, MapsActivity.class);
+                    myIntent.putExtra("username", mEmail);
+                    LoginActivity.this.startActivity(myIntent);
+                } else {
+                    mPasswordView.setError(getString(R.string.error_incorrect_password));
+                    mPasswordView.requestFocus();
+                }
+            } catch (JSONException e) {
+                Log.e("JSONERROR", "login server resonse invalid");
+                return;
             }
         }
 

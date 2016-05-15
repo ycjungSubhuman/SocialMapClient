@@ -125,7 +125,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
             //send json request to server. get response from server.
             String response = "";
             try {
-                Socket socket = new Socket(getString(R.string.address_server), 8000);
+                Socket socket = new Socket(getString(R.string.address_server), 4000);
                 OutputStream outputStream = socket.getOutputStream();
                 InputStream inputStream = socket.getInputStream();
 
