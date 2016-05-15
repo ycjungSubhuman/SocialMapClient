@@ -424,11 +424,11 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mAuthTask = null;
 
             if (response == null) {
-                    //TODO: remove this master key
-                    Intent myIntent = new Intent(LoginActivity.this, MapsActivity.class);
-                    myIntent.putExtra("username", mEmail);
-                    LoginActivity.this.startActivity(myIntent);
-                    return;
+                Log.e("ERROR", "login response null");
+                showProgress(false);
+                mPasswordView.setError("server error");
+                mPasswordView.requestFocus();
+                return;
             };
 
             JSONObject json = new JSONObject();

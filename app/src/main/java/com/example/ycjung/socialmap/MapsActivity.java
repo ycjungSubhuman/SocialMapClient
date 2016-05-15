@@ -48,11 +48,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback {
-
-    private GoogleMap mMap;
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback { private GoogleMap mMap;
     public static boolean mMapIsTouched = false;
     private static boolean isInDrawMode = false;
+    private static boolean isInMarkMode = false;
     DrawSupportMapFragment drawSupportMapFragment;
     Projection projection;
     Toast toast_pin;
