@@ -4,6 +4,7 @@ import android.app.Fragment;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Point;
 import android.os.AsyncTask;
@@ -62,6 +63,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     boolean pendingline = false;
     public double latitude;
     public double longitude;
+    String mUsername;
 
     private class JsonToServerJob extends AsyncTask<String,Void,String> {
         ProgressDialog progressDialog;
@@ -220,7 +222,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 try {
                     json = json.put("operation", "SAVEPAINTING")
-                            .put("sender", "ycjung")
+                            .put("sender", mUsername)
                             .put("body", array_array_vertice);
                 } catch (JSONException e) {
                     Log.e("JSONERROR", "JSON PUT EXCEPTION");
@@ -253,6 +255,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Intent intent = getIntent();
+        mUsername = intent.getStringExtra("username");
         setContentView(R.layout.activity_maps);
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
         SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
