@@ -292,7 +292,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         client.connect();
         Action viewAction = Action.newAction(
                 Action.TYPE_VIEW, // TODO: choose an action type.
-                "Login Page", // TODO: Define a title for the content shown.
+                "Welcome", // TODO: Define a title for the content shown.
                 // TODO: If you have web page content that matches this app activity's content,
                 // make sure this auto-generated web page URL is correct.
                 // Otherwise, set the URL to null.
@@ -422,7 +422,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         @Override
         protected void onPostExecute(final String response) {
             mAuthTask = null;
-            showProgress(false);
 
             if (response == null) {
                     //TODO: remove this master key
@@ -446,6 +445,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
                     myIntent.putExtra("username", mEmail);
                     LoginActivity.this.startActivity(myIntent);
                 } else {
+                    showProgress(false);
                     mPasswordView.setError(getString(R.string.error_incorrect_password));
                     mPasswordView.requestFocus();
                 }
